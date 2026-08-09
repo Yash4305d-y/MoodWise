@@ -1,2 +1,9 @@
+# Jupyter notebook working files
 bagofwords.ipynb
 tf-idf.ipynb
+
+# Python cache & virtual environment
+__pycache__/
+*.pyc
+venv/
+.env
