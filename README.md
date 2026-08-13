@@ -24,7 +24,7 @@ Raw Text
     ↓
 Text Preprocessing
     ↓
-Feature Extraction
+N-gram Feature Extraction
     ↓
 Machine Learning
     ↓
@@ -44,7 +44,9 @@ The project experiments with two text representation techniques:
 * **Bag of Words**
 * **TF-IDF**
 
-and compares them using:
+Both representations use **1–2 grams (unigrams + bigrams)**, allowing the model to learn from individual words as well as short two-word combinations.
+
+These representations are compared using:
 
 * **Multinomial Naive Bayes**
 * **Logistic Regression**
@@ -53,14 +55,27 @@ The best-performing combination was **Logistic Regression + Bag of Words**, achi
 
 ---
 
+## 🔤 N-grams
+
+MoodWise uses **unigrams and bigrams** during feature extraction.
+
+* **Unigram:** `I feel happy`
+* **Bigram:** `I feel`, `feel happy`
+
+Bigrams help the model capture small pieces of context that individual words can miss. For example, phrases such as **"not happy"** can carry a different meaning from simply looking at the individual words `not` and `happy`.
+
+The Bag-of-Words vectorizer was configured with up to **15,000 features**, while the TF-IDF vectorizer used up to **10,000 features**.
+
+---
+
 ## 📊 Model Performance
 
 | Model                   | Vectorization |      Accuracy |
 | ----------------------- | ------------- | ------------: |
-| Multinomial Naive Bayes | Bag of Words  |        76.78% |
-| Multinomial Naive Bayes | TF-IDF        |        66.09% |
-| Logistic Regression     | Bag of Words  | **88.84% 🏆** |
-| Logistic Regression     | TF-IDF        |        86.06% |
+| Multinomial Naive Bayes | Bag of Words  |        82.37% |
+| Multinomial Naive Bayes | TF-IDF        |        72.34% |
+| Logistic Regression     | Bag of Words  | **90.28% 🏆** |
+| Logistic Regression     | TF-IDF        |        87.09% |
 
 ### 🏆 Best Model
 
@@ -88,6 +103,7 @@ As my first NLP project, MoodWise helped me understand:
 * Text preprocessing
 * Tokenization
 * Stopword removal
+* N-grams
 * Bag of Words
 * TF-IDF
 * Multinomial Naive Bayes
@@ -99,6 +115,22 @@ As my first NLP project, MoodWise helped me understand:
 
 ---
 
+## ⚠️ Limitations of Traditional NLP + ML
+
+MoodWise uses traditional NLP techniques, which means the model works mainly with **word and short-phrase patterns** rather than understanding language semantically.
+
+This approach can struggle with:
+
+* Sarcasm and irony
+* Complex context and long-range relationships
+* Ambiguous or mixed emotions
+* Unseen words and expressions
+* Subtle differences in meaning
+
+These limitations are one reason modern NLP systems increasingly use **word embeddings, deep learning, and transformer-based models**.
+
+---
+
 ## 🔮 What's Next?
 
 MoodWise is a starting point for exploring more advanced NLP techniques.
@@ -106,10 +138,11 @@ MoodWise is a starting point for exploring more advanced NLP techniques.
 Future improvements could include:
 
 * Hyperparameter tuning
-* N-gram experimentation
+* More advanced N-gram experimentation
 * More detailed evaluation metrics
 * Confusion matrix analysis
 * Prediction confidence
+* Word embeddings
 * Deep-learning approaches
 * Transformer-based NLP models
 
@@ -118,7 +151,6 @@ Future improvements could include:
 ## 👨‍💻 Author
 
 **Yash Vinay Kalyani**
-
 
 `AI/ML` • `Data Science` • `Software Development`
 
