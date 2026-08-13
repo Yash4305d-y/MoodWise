@@ -25,8 +25,7 @@ st.set_page_config(
 # ============================================================
 
 st.markdown(
-    """
-<style>
+    """<style>
 /* ---------- Global ---------- */
 .block-container {
     max-width: 900px;
@@ -239,8 +238,7 @@ hr {
     padding-top: 1rem;
     border-top: 1px solid rgba(168, 162, 158, 0.15);
 }
-</style>
-""",
+</style>""",
     unsafe_allow_html=True,
 )
 
@@ -257,6 +255,7 @@ def load_artifacts():
 
     model_dir = "model"
 
+    # Loads model_lg and bow_vectorizer saved via joblib
     model = joblib.load(os.path.join(model_dir, "emotion_model.pkl"))
     vectorizer = joblib.load(os.path.join(model_dir, "vectorizer.pkl"))
     id_to_label = joblib.load(os.path.join(model_dir, "id_to_label.pkl"))
@@ -265,21 +264,27 @@ def load_artifacts():
 
 
 try:
-    model, vectorizer, id_to_label = load_artifacts()
+    model_lg, bow_vectorizer, id_to_label = load_artifacts()
     stop_words = set(stopwords.words("english"))
 
     # ========================================================
-    # TEXT CLEANING
+    # TEXT CLEANING (Matching notebook pipeline)
     # ========================================================
 
     def clean_text(text):
+        # 1. Lowercase
         text = text.lower()
-        text = re.sub(r"http\S+|www\S+", "", text)
+        # 2. Remove punctuation
         text = text.translate(str.maketrans("", "", string.punctuation))
-        text = "".join(char for char in text if not char.isdigit())
+        # 3. Remove digits
+        text = "".join([i for i in text if not i.isdigit()])
+        # 4. Remove links
+        text = re.sub(r"http\S+", "", text)
+        # 5. Remove emojis / non-ascii
         text = text.encode("ascii", "ignore").decode("ascii")
+        # 6. Remove stopwords
         words = word_tokenize(text)
-        words = [word for word in words if word.lower() not in stop_words]
+        words = [w for w in words if w.lower() not in stop_words]
         return " ".join(words)
 
     # ========================================================
@@ -293,6 +298,7 @@ try:
         "surprise": "#F59E0B",
         "fear": "#A78B5A",
         "joy": "#D97706",
+        "neutral / uncertain": "#6B7280",
     }
 
     emotion_icons = {
@@ -302,6 +308,7 @@ try:
         "surprise": "😲",
         "fear": "😨",
         "joy": "😊",
+        "neutral / uncertain": "😐",
     }
 
     emotion_descriptions = {
@@ -311,6 +318,7 @@ try:
         "surprise": "The text expresses astonishment, unexpectedness, or something remarkable.",
         "fear": "The text expresses worry, anxiety, nervousness, or fear.",
         "joy": "The text expresses happiness, excitement, satisfaction, or positive feelings.",
+        "neutral / uncertain": "The text does not express a strong emotional state or contains out-of-domain keywords.",
     }
 
     # ========================================================
@@ -338,7 +346,7 @@ try:
             st.markdown(
                 """<div class="model-stat">
 <div class="model-stat-value">Logistic Regression</div>
-<div class="model-stat-label">CLASSIFIER</div>
+<div class="model-stat-label">CLASSIFIER (MODEL_LG)</div>
 </div>""",
                 unsafe_allow_html=True,
             )
@@ -346,7 +354,7 @@ try:
         with info2:
             st.markdown(
                 """<div class="model-stat">
-<div class="model-stat-value">Bag of Words</div>
+<div class="model-stat-value">Bag of Words (N-Grams)</div>
 <div class="model-stat-label">FEATURE EXTRACTION</div>
 </div>""",
                 unsafe_allow_html=True,
@@ -356,7 +364,7 @@ try:
             st.markdown(
                 """<div class="model-stat">
 <div class="model-stat-value">~88.8%</div>
-<div class="model-stat-label">TRAINING ACCURACY</div>
+<div class="model-stat-label">TEST ACCURACY</div>
 </div>""",
                 unsafe_allow_html=True,
             )
@@ -364,9 +372,8 @@ try:
         st.markdown("</div>", unsafe_allow_html=True)
 
         st.caption(
-            "Text is cleaned by removing URLs, punctuation, digits, "
-            "and stopwords before being transformed into a Bag-of-Words "
-            "representation."
+            "Text is cleaned by lowercasing, removing punctuation, digits, links, "
+            "and stopwords before transforming using CountVectorizer with N-Grams."
         )
 
     # ========================================================
@@ -471,25 +478,29 @@ try:
         else:
             with st.spinner("Analyzing your text..."):
                 cleaned = clean_text(user_text)
-                vectorized = vectorizer.transform([cleaned])
-                pred_id = model.predict(vectorized)[0]
 
-                predicted_emotion = (
-                    id_to_label.get(pred_id, str(pred_id))
-                    if isinstance(id_to_label, dict)
-                    else str(pred_id)
-                )
+                # Vectorize input text using bow_vectorizer
+                xtest_bow = bow_vectorizer.transform([cleaned])
 
-                probabilities = model.predict_proba(vectorized)[0]
+                # Predict using model_lg
+                pred_lg = model_lg.predict(xtest_bow)[0]
+                probabilities = model_lg.predict_proba(xtest_bow)[0]
+
+                predicted_emotion = id_to_label.get(pred_lg, str(pred_lg))
 
             # =================================================
-            # RESULT
+            # CONFIDENCE THRESHOLD CHECK (Neutral Fallback)
             # =================================================
+
+            top_prob = max(probabilities) * 100
+            CONFIDENCE_THRESHOLD = 40.0  # Adjust as needed
+
+            if top_prob < CONFIDENCE_THRESHOLD:
+                predicted_emotion = "Neutral / Uncertain"
 
             emotion_key = str(predicted_emotion).lower()
             bg_color = emotion_colors.get(emotion_key, "#78716C")
             icon = emotion_icons.get(emotion_key, "🎭")
-            top_prob = max(probabilities) * 100
 
             st.markdown("---")
 
@@ -531,11 +542,9 @@ try:
                     unsafe_allow_html=True,
                 )
 
+                # Map classes dynamically using id_to_label
                 labels = [
-                    id_to_label.get(cls, str(cls))
-                    if isinstance(id_to_label, dict)
-                    else str(cls)
-                    for cls in model.classes_
+                    id_to_label.get(cls, str(cls)) for cls in model_lg.classes_
                 ]
 
                 prob_df = pd.DataFrame(
